@@ -1,0 +1,22 @@
+lockfileVersion: 5.4
+
+specifiers:
+  mitata: ^0.1.6
+  mri: ^1.2.0
+
+dependencies:
+  mitata: 0.1.6
+
+devDependencies:
+  mri: 1.2.0
+
+packages:
+
+  /mitata/0.1.6:
+    resolution: {integrity: sha512-VKQ0r3jriTOU9E2Z+mwbZrUmbg4Li4QyFfi7kfHKl6reZhGzL0AYlu3wE0VPXzIwA5xnFzmEQoBwCcNT8stUkA==}
+    dev: false
+
+  /mri/1.2.0:
+    resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
+    engines: {node: '>=4'}
+    dev: true
