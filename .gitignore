@@ -145,3 +145,6 @@ dist
 
 target/
 **/target/
+
+*.node
+benchmarks/wasm

@@ -1,7 +1,15 @@
 import { bench, group, run } from "mitata";
 
 export async function load(file, name) {
-  const { default: main, setup, teardown, ...rest } = await import(file);
+  let imports;
+
+  try {
+    imports = await import(file);
+  } catch {
+    return;
+  }
+
+  const { default: main, setup, teardown, ...rest } = imports;
 
   await setup?.();
 
@@ -10,7 +18,7 @@ export async function load(file, name) {
   }
 
   if (Object.keys(rest).length > 0) {
-    group(name, () => {
+    group(() => {
       for (const [key, fn] of Object.entries(rest)) {
         bench(`${name}:${key}`, fn);
       }

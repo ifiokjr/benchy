@@ -1,8 +1,16 @@
 {
   "tasks": {
+    "rust": "deno task rust:node && deno task rust:ffi && deno task rust:deno && deno task rust:wasm",
+    "rust:node": "pnpm napi build -p benchmark_rust --release --js false --no-dts-header --features node --cargo-cwd benchmarks/rust && mv benchmark_rust.node benchmarks",
+    "rust:ffi": "cargo build -p benchmark_rust --lib --release --features ffi",
+    "rust:deno": "deno task deno_bindgen -- --features deno",
+    "rust:wasm": "deno task rust:wasm:create && deno task rust:wasm:deno && deno task rust:wasm:node",
+    "rust:wasm:create": "cargo build -p benchmark_rust --lib --target wasm32-unknown-unknown --release --features wasm",
+    "rust:wasm:deno": "wasm-bindgen --target deno --out-dir benchmarks/wasm/deno ./target/wasm32-unknown-unknown/release/benchmark_rust.wasm",
+    "rust:wasm:node": "wasm-bindgen --target nodejs --out-dir benchmarks/wasm/node ./target/wasm32-unknown-unknown/release/benchmark_rust.wasm",
     "bench": "deno run -A --unstable benchmarks/bench.ts",
     "start": "deno run -A --watch=static/,routes/ dev.ts",
-    "wasmbuild": "deno run -A https://deno.land/x/wasmbuild@0.8.5/main.ts"
+    "deno_bindgen": "deno run -A https://deno.land/x/deno_bindgen@0.6.0/codegen.ts"
   },
   "lint": {
     "files": {

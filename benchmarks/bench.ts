@@ -1,53 +1,99 @@
 import { ensureDir } from "fs";
-import { bench, type Report, run } from "mitata";
+import { type Report } from "mitata";
 import * as path from "path";
 import { objectEntries } from "ts-extras";
-import { BenchmarkEntry, FullBenchmark } from "~/types.ts";
+import { FullBenchmark } from "~/types.ts";
 
-const FIXTURES = new URL("./fixtures/", import.meta.url);
-const RUNTIMES = new URL("./runtimes/", import.meta.url);
+const ENTRIES_URL = new URL("./entries/", import.meta.url);
+const RUNTIMES_URL = new URL("./runtimes/", import.meta.url);
 
-const runtimes = {
-  node: ["node", path.join(RUNTIMES.pathname, "node.js")],
-  bun: ["bun", "run", path.join(RUNTIMES.pathname, "bun.js")],
+type Command = () => Promise<string | undefined>;
+
+type RuntimeCommands = Record<Runtime, string[] | Command>;
+
+const runtimes: RuntimeCommands = {
+  node: ["node", path.join(RUNTIMES_URL.pathname, "node.js")],
+  bun: ["bun", "run", path.join(RUNTIMES_URL.pathname, "bun.js")],
   deno: [
     "deno",
     "run",
     "-A",
     "--unstable",
-    path.join(RUNTIMES.pathname, "deno.js"),
+    path.join(RUNTIMES_URL.pathname, "deno.js"),
   ],
 };
+type Runtime = "node" | "deno" | "bun";
 
 async function fileRunner(absolutePath: string) {
   const name = path.basename(absolutePath).replace(/\.js$/, "");
   for (const [runtime, cmd] of objectEntries(runtimes)) {
     Deno.stdout.write(new TextEncoder().encode("."));
+    await runBenchmark(cmd, absolutePath, name, runtime);
+  }
+}
+
+async function runBenchmark(
+  cmd: string[] | Command,
+  absolutePath: string,
+  name: string,
+  runtime: Runtime,
+) {
+  let outputString: string | undefined;
+
+  if (Array.isArray(cmd)) {
     const process = Deno.run({
       cmd: [...cmd, "--file", absolutePath, "--name", name],
       stdout: "piped",
     });
 
     const output = await process.output();
-    const outputString = new TextDecoder().decode(output).split("\n").at(-2) ??
-      "";
-    // if (outputString.includes("hello")) {
-    //   console.log(outputString);
-    // }
-    try {
-      const report: Report = JSON.parse(outputString);
-      updateFullBenchmark(report, runtime);
-    } catch {
-      // store something here
-    }
+    // const outputString = new TextDecoder().decode(output).split("\n").at(-2) ?? "";
+    outputString = new TextDecoder()
+      .decode(output)
+      .split("\n")
+      .find((line) => line.startsWith('{"benchmarks":'));
+  } else {
+    outputString = await cmd();
+  }
+
+  if (!outputString) {
+    return false;
+  }
+
+  try {
+    const report: Report = JSON.parse(outputString);
+    updateFullBenchmark(report, runtime);
+    return true;
+  } catch {
+    return false;
   }
 }
 
 async function folderRunner(absolutePath: string) {
   const name = path.basename(absolutePath);
-  const config = await loadJsonFile(
-    path.join(absolutePath, "config.ts"),
-  );
+  const setupPath = path.join(absolutePath, "setup.ts");
+  let setup: (() => Promise<void>) | undefined;
+  let teardown: (() => Promise<void>) | undefined;
+  let commands: RuntimeCommands | undefined;
+
+  try {
+    ({ setup, teardown, commands } = await import(setupPath));
+  } catch {
+    // No setup.ts file found.
+  }
+
+  const runner = path.join(absolutePath, "run.js");
+  for (let [runtime, cmd] of objectEntries(runtimes)) {
+    const runtimePath = path.join(absolutePath, `${runtime}.js`);
+    cmd = commands?.[runtime] ?? cmd;
+    await setup?.();
+
+    Deno.stdout.write(new TextEncoder().encode("."));
+    await runBenchmark(cmd, runner, name, runtime) ||
+      await runBenchmark(cmd, runtimePath, name, `${runtime}`);
+
+    await teardown?.();
+  }
 }
 
 async function loadJsonFile(filepath: string | URL, fallback: unknown = null) {
@@ -123,13 +169,8 @@ const fullBenchmark: FullBenchmark = {
   entries: {},
 };
 
-for await (const entry of Deno.readDir(FIXTURES)) {
-  const fullPath = new URL(entry.name, FIXTURES.href).pathname;
-
-  if (!entry.isFile && !entry.isDirectory) {
-    continue;
-  }
-
+for await (const entry of Deno.readDir(ENTRIES_URL)) {
+  const fullPath = new URL(entry.name, ENTRIES_URL.href).pathname;
   Deno.stdout.write(new TextEncoder().encode(`${entry.name} `));
 
   if (entry.isFile) {

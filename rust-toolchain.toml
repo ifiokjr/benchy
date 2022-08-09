@@ -1,0 +1,5 @@
+[toolchain]
+# Find versions: https://rust-lang.github.io/rustup-components-history/
+channel = "1.62.1"
+profile = "default"
+targets = ["wasm32-unknown-unknown"]

@@ -7,14 +7,22 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "packageManager": "pnpm@7.8.0",
+  "packageManager": "pnpm@7.9.0",
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "mitata": "^0.1.6"
-  },
   "devDependencies": {
-    "mri": "^1.2.0"
+    "mitata": "^0.1.6",
+    "mri": "^1.2.0",
+    "@napi-rs/cli": "^2.11.0",
+    "@node-rs/helper": "^1.3.3"
+  },
+  "napi": {
+    "name": "benchmark_rust"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@napi-rs/cli"
+    ]
   }
 }
