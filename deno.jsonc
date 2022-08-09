@@ -1,5 +1,6 @@
 {
   "tasks": {
+    "init": "pnpm install && deno task rust",
     "rust": "deno task rust:node && deno task rust:ffi && deno task rust:deno && deno task rust:wasm",
     "rust:node": "pnpm napi build -p benchmark_rust --release --js false --no-dts-header --features node --cargo-cwd benchmarks/rust && mv benchmark_rust.node benchmarks",
     "rust:ffi": "cargo build -p benchmark_rust --lib --release --features ffi",

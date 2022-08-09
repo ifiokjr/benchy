@@ -1,16 +1,8 @@
 {
   "name": "benchy",
   "type": "module",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "packageManager": "pnpm@7.9.0",
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "license": "Unlincense",
   "devDependencies": {
     "mitata": "^0.1.6",
     "mri": "^1.2.0",

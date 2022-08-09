@@ -2,7 +2,7 @@
 
 ## Why?
 
-Create fair and balanced benchmarks for the most popular JS Runtimes and make them accessible to the community.
+Create fairer benchmarks for server side JavaScript runtimes.
 
 ### Usage
 
