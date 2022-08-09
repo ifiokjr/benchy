@@ -7,8 +7,8 @@
     "rust:deno": "deno task deno_bindgen -- --features deno",
     "rust:wasm": "deno task rust:wasm:create && deno task rust:wasm:deno && deno task rust:wasm:node",
     "rust:wasm:create": "cargo build -p benchmark_rust --lib --target wasm32-unknown-unknown --release --features wasm",
-    "rust:wasm:deno": "wasm-bindgen --target deno --out-dir benchmarks/wasm/deno ./target/wasm32-unknown-unknown/release/benchmark_rust.wasm",
-    "rust:wasm:node": "wasm-bindgen --target nodejs --out-dir benchmarks/wasm/node ./target/wasm32-unknown-unknown/release/benchmark_rust.wasm",
+    "rust:wasm:deno": "wasm-bindgen --target deno --out-dir benchmarks/wasm ./target/wasm32-unknown-unknown/release/benchmark_rust.wasm",
+    "rust:wasm:node": "deno run -A ./config/node_wasm.ts",
     "bench": "deno run -A --unstable benchmarks/bench.ts",
     "start": "deno run -A --watch=static/,routes/ dev.ts",
     "deno_bindgen": "deno run -A https://deno.land/x/deno_bindgen@0.6.0/codegen.ts"
