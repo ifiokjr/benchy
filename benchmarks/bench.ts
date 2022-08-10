@@ -1,3 +1,4 @@
+import { parse } from "flags";
 import { ensureDir } from "fs";
 import { type Report } from "mitata";
 import * as path from "path";
@@ -6,6 +7,11 @@ import { FullBenchmark } from "~/types.ts";
 
 const ENTRIES_URL = new URL("./entries/", import.meta.url);
 const RUNTIMES_URL = new URL("./runtimes/", import.meta.url);
+
+const { ignore = [], only = [] } = parse(Deno.args, {
+  // string: ["ignore"],
+  collect: ["ignore", "only"],
+});
 
 type Command = () => Promise<string | undefined>;
 
@@ -37,12 +43,13 @@ async function runBenchmark(
   absolutePath: string,
   name: string,
   runtime: Runtime,
+  json = "{}",
 ) {
   let outputString: string | undefined;
 
   if (Array.isArray(cmd)) {
     const process = Deno.run({
-      cmd: [...cmd, "--file", absolutePath, "--name", name],
+      cmd: [...cmd, "--file", absolutePath, "--name", name, "--json", json],
       stdout: "piped",
     });
 
@@ -72,8 +79,10 @@ async function runBenchmark(
 async function folderRunner(absolutePath: string) {
   const name = path.basename(absolutePath);
   const setupPath = path.join(absolutePath, "setup.ts");
-  let setup: (() => Promise<void>) | undefined;
-  let teardown: (() => Promise<void>) | undefined;
+  let setup: (() => Promise<Record<string, unknown>>) | undefined;
+  let teardown:
+    | ((props: Record<string, unknown>) => Promise<Record<string, unknown>>)
+    | undefined;
   let commands: RuntimeCommands | undefined;
 
   try {
@@ -83,16 +92,18 @@ async function folderRunner(absolutePath: string) {
   }
 
   const runner = path.join(absolutePath, "run.js");
+
   for (let [runtime, cmd] of objectEntries(runtimes)) {
     const runtimePath = path.join(absolutePath, `${runtime}.js`);
     cmd = commands?.[runtime] ?? cmd;
-    await setup?.();
+    const props = await setup?.();
+    const json = props ? JSON.stringify(props) : "{}";
 
     Deno.stdout.write(new TextEncoder().encode("."));
-    await runBenchmark(cmd, runner, name, runtime) ||
-      await runBenchmark(cmd, runtimePath, name, `${runtime}`);
+    await runBenchmark(cmd, runtimePath, name, runtime, json) ||
+      await runBenchmark(cmd, runner, name, runtime, json);
 
-    await teardown?.();
+    await teardown?.(props ?? {});
   }
 }
 
@@ -115,8 +126,12 @@ function updateFullBenchmark(report: Report, runtime: keyof typeof runtimes) {
   }
 
   if (!fullBenchmark.versions[runtime]) {
-    const [_, version = ""] = report.runtime.split(" ");
-    fullBenchmark.versions[runtime] = version.replace(/^v/, "");
+    const [value, version = ""] = report.runtime.split(" ");
+
+    if (value === runtime) {
+      // Some benchmarks are run within deno commands.
+      fullBenchmark.versions[runtime] = version.replace(/^v/, "");
+    }
   }
 
   for (const benchmark of report.benchmarks) {
@@ -170,6 +185,21 @@ const fullBenchmark: FullBenchmark = {
 };
 
 for await (const entry of Deno.readDir(ENTRIES_URL)) {
+  if (
+    ignore.includes(entry.name) ||
+    ignore.includes(entry.name.replace(/\.js$/, ""))
+  ) {
+    continue;
+  }
+
+  if (
+    only.length > 0 &&
+    !(only.includes(entry.name) ||
+      only.includes(entry.name.replace(/\.js$/, "")))
+  ) {
+    continue;
+  }
+
   const fullPath = new URL(entry.name, ENTRIES_URL.href).pathname;
   Deno.stdout.write(new TextEncoder().encode(`${entry.name} `));
 
