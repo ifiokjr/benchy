@@ -3,7 +3,7 @@ import {
   readdirSync,
   readFileSync,
   renameSync,
-  rmSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import {
@@ -11,7 +11,7 @@ import {
   readdir,
   readFile,
   rename,
-  rm,
+  unlink,
   writeFile,
 } from "node:fs/promises";
 import * as path from "path";
@@ -63,7 +63,7 @@ export function readGbSync(props) {
  */
 export async function writeKb(props) {
   await writeFile(path.join(props.root, "kb_write"), new Uint8Array(1024));
-  await rm(path.join(props.root, "kb_write"));
+  await unlink(path.join(props.root, "kb_write"));
 }
 
 /**
@@ -74,7 +74,7 @@ export async function writeMb(props) {
     path.join(props.root, "mb_write"),
     new Uint8Array(1024 * 1024),
   );
-  await rm(path.join(props.root, "mb_write"));
+  await unlink(path.join(props.root, "mb_write"));
 }
 
 /**
@@ -85,7 +85,7 @@ export async function writeGb(props) {
     path.join(props.root, "gb_write"),
     new Uint8Array(1024 * 1024 * 1024),
   );
-  await rm(path.join(props.root, "gb_write"));
+  await unlink(path.join(props.root, "gb_write"));
 }
 
 /**
@@ -96,7 +96,7 @@ export function writeKbSync(props) {
     path.join(props.root, "kb_write_sync"),
     new Uint8Array(1024),
   );
-  rmSync(path.join(props.root, "kb_write_sync"));
+  unlinkSync(path.join(props.root, "kb_write_sync"));
 }
 
 /**
@@ -107,7 +107,7 @@ export function writeMbSync(props) {
     path.join(props.root, "mb_write_sync"),
     new Uint8Array(1024 * 1024),
   );
-  rmSync(path.join(props.root, "mb_write_sync"));
+  unlinkSync(path.join(props.root, "mb_write_sync"));
 }
 
 /**
@@ -118,7 +118,7 @@ export function writeGbSync(props) {
     path.join(props.root, "gb_write_sync"),
     new Uint8Array(1024 * 1024 * 1024),
   );
-  rmSync(path.join(props.root, "gb_write_sync"));
+  unlinkSync(path.join(props.root, "gb_write_sync"));
 }
 
 /**
@@ -140,7 +140,7 @@ export function readDirSync(props) {
  */
 export async function copyKb(props) {
   await copyFile(props.read.kb, path.join(props.root, "kb_copy"));
-  await rm(path.join(props.root, "kb_copy"));
+  await unlink(path.join(props.root, "kb_copy"));
 }
 
 /**
@@ -148,7 +148,7 @@ export async function copyKb(props) {
  */
 export async function copyMb(props) {
   await copyFile(props.read.mb, path.join(props.root, "mb_copy"));
-  await rm(path.join(props.root, "mb_copy"));
+  await unlink(path.join(props.root, "mb_copy"));
 }
 
 /**
@@ -156,7 +156,7 @@ export async function copyMb(props) {
  */
 export async function copyGb(props) {
   await copyFile(props.read.gb, path.join(props.root, "gb_copy"));
-  await rm(path.join(props.root, "gb_copy"));
+  await unlink(path.join(props.root, "gb_copy"));
 }
 
 /**
@@ -164,7 +164,7 @@ export async function copyGb(props) {
  */
 export function copyKbSync(props) {
   copyFileSync(props.read.kb, path.join(props.root, "kb_copy_sync"));
-  rmSync(path.join(props.root, "kb_copy_sync"));
+  unlinkSync(path.join(props.root, "kb_copy_sync"));
 }
 
 /**
@@ -172,7 +172,7 @@ export function copyKbSync(props) {
  */
 export function copyMbSync(props) {
   copyFileSync(props.read.mb, path.join(props.root, "mb_copy_sync"));
-  rmSync(path.join(props.root, "mb_copy_sync"));
+  unlinkSync(path.join(props.root, "mb_copy_sync"));
 }
 
 /**
@@ -180,7 +180,7 @@ export function copyMbSync(props) {
  */
 export function copyGbSync(props) {
   copyFileSync(props.read.gb, path.join(props.root, "gb_copy_sync"));
-  rmSync(path.join(props.root, "gb_copy_sync"));
+  unlinkSync(path.join(props.root, "gb_copy_sync"));
 }
 
 /**

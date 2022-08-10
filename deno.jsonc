@@ -10,8 +10,8 @@
     "rust:wasm:deno": "wasm-bindgen --target deno --out-dir benchmarks/wasm ./target/wasm32-unknown-unknown/release/benchmark_rust.wasm",
     "rust:wasm:node": "deno run -A ./config/node_wasm.ts",
     "bench": "deno run -A --unstable benchmarks/bench.ts",
-    "bench:quick": "deno run -A --unstable benchmarks/bench.ts --ignore files",
-    "bench:files": "deno run -A --unstable benchmarks/bench.ts --include files",
+    "bench:quick": "deno run -A --unstable benchmarks/bench.ts --exclude files",
+    "bench:files": "deno run -A --unstable benchmarks/bench.ts --only files",
     "start": "deno run -A --watch=static/,routes/ dev.ts",
     "deno_bindgen": "deno run -A https://deno.land/x/deno_bindgen@0.6.0/codegen.ts"
   },

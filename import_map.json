@@ -11,6 +11,7 @@
     "flags": "https://deno.land/std@0.151.0/flags/mod.ts",
     "node:fs/promises": "https://deno.land/std@0.151.0/node/fs/promises.ts",
     "node:fs": "https://deno.land/std@0.151.0/node/fs.ts",
+    "node:http": "https://deno.land/std@0.151.0/node/http.ts",
     "node:module": "https://deno.land/std@0.151.0/node/module.ts",
     "node:process": "https://deno.land/std@0.151.0/node/process.ts",
     "node:util": "https://deno.land/std@0.151.0/node/util.ts",

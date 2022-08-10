@@ -10,6 +10,8 @@ for (const [index] of Array.from({ length: 1024 }).entries()) {
   }
 }
 
+const bigJsonString = JSON.stringify({ ...bigJson, nested: { ...bigJson } });
+
 export function stringifyBig() {
   return JSON.stringify(bigJson);
 }
@@ -20,4 +22,8 @@ export function stringifySmall() {
 
 export function parseSmall() {
   return JSON.parse(smallJsonString);
+}
+
+export function parseBig() {
+  return JSON.parse(bigJsonString);
 }

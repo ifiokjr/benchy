@@ -3,19 +3,14 @@ import { ensureDir } from "fs";
 import { type Report } from "mitata";
 import * as path from "path";
 import { objectEntries } from "ts-extras";
-import { FullBenchmark } from "~/types.ts";
+import { Command, FullBenchmark, Runtime, RuntimeCommands } from "~/types.ts";
 
 const ENTRIES_URL = new URL("./entries/", import.meta.url);
 const RUNTIMES_URL = new URL("./runtimes/", import.meta.url);
 
-const { ignore = [], only = [] } = parse(Deno.args, {
-  // string: ["ignore"],
-  collect: ["ignore", "only"],
+const { exclude = [], only = [] } = parse(Deno.args, {
+  collect: ["exclude", "only"],
 });
-
-type Command = () => Promise<string | undefined>;
-
-type RuntimeCommands = Record<Runtime, string[] | Command>;
 
 const runtimes: RuntimeCommands = {
   node: ["node", path.join(RUNTIMES_URL.pathname, "node.js")],
@@ -28,7 +23,6 @@ const runtimes: RuntimeCommands = {
     path.join(RUNTIMES_URL.pathname, "deno.js"),
   ],
 };
-type Runtime = "node" | "deno" | "bun";
 
 async function fileRunner(absolutePath: string) {
   const name = path.basename(absolutePath).replace(/\.js$/, "");
@@ -186,8 +180,8 @@ const fullBenchmark: FullBenchmark = {
 
 for await (const entry of Deno.readDir(ENTRIES_URL)) {
   if (
-    ignore.includes(entry.name) ||
-    ignore.includes(entry.name.replace(/\.js$/, ""))
+    exclude.includes(entry.name) ||
+    exclude.includes(entry.name.replace(/\.js$/, ""))
   ) {
     continue;
   }
