@@ -1,4 +1,4 @@
-import * as path from "path";
+import * as path from "deno:path";
 
 /**
  * @param {import('./setup.ts').Setup} props

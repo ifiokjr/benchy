@@ -148,3 +148,8 @@ target/
 
 *.node
 benchmarks/wasm
+
+tmp/**
+tmp*
+**/tmp
+/tmp

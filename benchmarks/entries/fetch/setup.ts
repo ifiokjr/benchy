@@ -21,12 +21,14 @@ export async function setup(): Promise<Setup> {
   // Ensure the server is up and running.
   await retry(async () => {
     let text: string | undefined;
+
     try {
       const response = await fetch(`http://localhost:${port}/ping`);
       text = await response.text();
     } catch {
       // Ignore this error (for some reason it causes retry to fail)
     }
+
     assert(text === "pong");
   });
 

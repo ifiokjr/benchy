@@ -1,5 +1,5 @@
-import { ensureDir } from "fs";
-import * as path from "path";
+import { ensureDir } from "deno:fs";
+import * as path from "deno:path";
 import { objectEntries } from "ts-extras";
 
 export interface Setup {

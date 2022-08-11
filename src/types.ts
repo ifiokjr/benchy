@@ -1,10 +1,28 @@
-export type Command = () => Promise<string | undefined>;
+export type Os = typeof Deno.build.os;
+export type Command = (os: Os) => Promise<Entry[]>;
 export type RuntimeCommands = Record<Runtime, string[] | Command>;
 export type Runtime = "node" | "deno" | "bun";
 
-export interface BenchmarkEntry {
-  runtime: "deno" | "bun" | "node";
+export type Timestamps = {
+  [Timestamp: number]: Partial<Record<Os, string>>;
+};
+
+interface BaseEntry {
   name: string;
+  runtime: Runtime;
+  /**
+   * - When sorting is `-1` the lower value is a better result.
+   * - When sorting is `+1` the higher value is a better result.
+   *
+   * Example:
+   *
+   * TimePerIteration has a sorting of `-1` which means a lower time per iteration is better.
+   */
+  sorting: -1 | 1;
+}
+
+export interface TimePerIterationEntry extends BaseEntry {
+  type: "timePerIteration";
   time: number;
   n: number;
   avg: number;
@@ -16,16 +34,34 @@ export interface BenchmarkEntry {
   p999: number;
 }
 
-export interface FullBenchmark {
-  cpu: string;
-  arch: string;
-  versions: {
-    deno: string;
-    bun: string;
-    node: string;
-  };
+export interface ThroughputEntry extends BaseEntry, Throughput {
+  type: "throughput";
+  time: number;
+  sorting: 1;
+}
 
-  entries: Record<string, BenchmarkEntry[]>;
+export interface LatencyEntry extends BaseEntry, Latency {
+  type: "latency";
+  time: number;
+  sorting: -1;
+}
+
+export interface RequestsEntry extends BaseEntry, Requests {
+  type: "requests";
+  time: number;
+  sorting: 1;
+}
+
+export type Entry =
+  | TimePerIterationEntry
+  | ThroughputEntry
+  | LatencyEntry
+  | RequestsEntry;
+
+export interface FullBenchmark {
+  os: Os;
+  versions: Record<Runtime, string>;
+  entries: { [Name: string]: Entry[] };
 }
 
 export interface AutoCannon {

@@ -14,7 +14,7 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
-import * as path from "path";
+import * as path from "node:path";
 
 /**
  * @param {import('./setup.ts').Setup} props

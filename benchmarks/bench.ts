@@ -1,34 +1,32 @@
-import { parse } from "flags";
-import { ensureDir } from "fs";
-import { type Report } from "mitata";
-import * as path from "path";
+import { parse } from "deno:flags";
+import * as fs from "deno:fs";
+import * as path from "deno:path";
 import { objectEntries } from "ts-extras";
-import { Command, FullBenchmark, Runtime, RuntimeCommands } from "~/types.ts";
+import { Command, RuntimeCommands } from "~/types.ts";
+import { createSaveJsonFile, TEMP_URL } from "./utils.js";
 
 const ENTRIES_URL = new URL("./entries/", import.meta.url);
 const RUNTIMES_URL = new URL("./runtimes/", import.meta.url);
+const save = createSaveJsonFile(Deno.writeTextFile, Deno.build.os);
 
 const { exclude = [], only = [] } = parse(Deno.args, {
   collect: ["exclude", "only"],
 });
+const nodeRunner = path.join(RUNTIMES_URL.pathname, "node.js");
+const bunRunner = path.join(RUNTIMES_URL.pathname, "bun.js");
+const denoRunner = path.join(RUNTIMES_URL.pathname, "deno.js");
 
 const runtimes: RuntimeCommands = {
-  node: ["node", path.join(RUNTIMES_URL.pathname, "node.js")],
-  bun: ["bun", "run", path.join(RUNTIMES_URL.pathname, "bun.js")],
-  deno: [
-    "deno",
-    "run",
-    "-A",
-    "--unstable",
-    path.join(RUNTIMES_URL.pathname, "deno.js"),
-  ],
+  node: ["node", nodeRunner],
+  bun: ["bun", "run", bunRunner],
+  deno: ["deno", "run", "-A", "--unstable", denoRunner],
 };
 
 async function fileRunner(absolutePath: string) {
   const name = path.basename(absolutePath).replace(/\.js$/, "");
-  for (const [runtime, cmd] of objectEntries(runtimes)) {
+  for (const [_runtime, cmd] of objectEntries(runtimes)) {
     Deno.stdout.write(new TextEncoder().encode("."));
-    await runBenchmark(cmd, absolutePath, name, runtime);
+    await runBenchmark(cmd, absolutePath, name);
   }
 }
 
@@ -36,38 +34,44 @@ async function runBenchmark(
   cmd: string[] | Command,
   absolutePath: string,
   name: string,
-  runtime: Runtime,
   json = "{}",
 ) {
-  let outputString: string | undefined;
-
   if (Array.isArray(cmd)) {
     const process = Deno.run({
-      cmd: [...cmd, "--file", absolutePath, "--name", name, "--json", json],
+      cmd: [
+        ...cmd,
+        "--file",
+        absolutePath,
+        "--name",
+        name,
+        "--json",
+        json,
+        "--os",
+        Deno.build.os,
+      ],
+      stderr: "piped",
       stdout: "piped",
     });
 
-    const output = await process.output();
-    // const outputString = new TextDecoder().decode(output).split("\n").at(-2) ?? "";
-    outputString = new TextDecoder()
-      .decode(output)
-      .split("\n")
-      .find((line) => line.startsWith('{"benchmarks":'));
-  } else {
-    outputString = await cmd();
+    const [_output, error, status] = await Promise.all([
+      process.output(),
+      process.stderrOutput(),
+      process.status(),
+    ]);
+
+    if (error.byteLength) {
+      const errorLog = new TextDecoder().decode(error);
+
+      if (!errorLog.includes("BenchyRunnerError")) {
+        console.error(errorLog);
+      }
+    }
+
+    return status.success;
   }
 
-  if (!outputString) {
-    return false;
-  }
-
-  try {
-    const report: Report = JSON.parse(outputString);
-    updateFullBenchmark(report, runtime);
-    return true;
-  } catch {
-    return false;
-  }
+  await save(await cmd(Deno.build.os));
+  return true;
 }
 
 async function folderRunner(absolutePath: string) {
@@ -94,119 +98,50 @@ async function folderRunner(absolutePath: string) {
     const json = props ? JSON.stringify(props) : "{}";
 
     Deno.stdout.write(new TextEncoder().encode("."));
-    await runBenchmark(cmd, runtimePath, name, runtime, json) ||
-      await runBenchmark(cmd, runner, name, runtime, json);
+
+    if (!await runBenchmark(cmd, runtimePath, name, json)) {
+      await runBenchmark(cmd, runner, name, json);
+    }
 
     await teardown?.(props ?? {});
   }
 }
 
-async function loadJsonFile(filepath: string | URL, fallback: unknown = null) {
-  try {
-    return JSON.parse(await Deno.readTextFile(filepath));
-  } catch {
-    return fallback;
-  }
+async function ensureDirectory() {
+  await fs.ensureDir(path.join(TEMP_URL.pathname, Deno.build.os));
 }
 
-function updateFullBenchmark(report: Report, runtime: keyof typeof runtimes) {
-  if (!fullBenchmark.cpu) {
-    fullBenchmark.cpu = report.cpu;
-  }
-
-  if (!fullBenchmark.arch && runtime === "deno") {
-    const [, , arch = ""] = report.runtime.split(" ");
-    fullBenchmark.arch = arch.replace(/\(|\)/g, "");
-  }
-
-  if (!fullBenchmark.versions[runtime]) {
-    const [value, version = ""] = report.runtime.split(" ");
-
-    if (value === runtime) {
-      // Some benchmarks are run within deno commands.
-      fullBenchmark.versions[runtime] = version.replace(/^v/, "");
-    }
-  }
-
-  for (const benchmark of report.benchmarks) {
-    if (!benchmark.stats) {
+async function run() {
+  for await (const entry of Deno.readDir(ENTRIES_URL)) {
+    if (
+      exclude.includes(entry.name) ||
+      exclude.includes(entry.name.replace(/\.js$/, ""))
+    ) {
       continue;
     }
 
-    const { name, time, stats } = benchmark;
-    const { jit: _, ...rest } = stats;
-
-    if (!fullBenchmark.entries[name]) {
-      fullBenchmark.entries[name] = [];
+    if (
+      only.length > 0 &&
+      !(only.includes(entry.name) ||
+        only.includes(entry.name.replace(/\.js$/, "")))
+    ) {
+      continue;
     }
 
-    fullBenchmark.entries[name].push({ ...rest, name, time, runtime });
+    const fullPath = new URL(entry.name, ENTRIES_URL.href).pathname;
+    Deno.stdout.write(new TextEncoder().encode(`${entry.name} `));
+
+    if (entry.isFile) {
+      await fileRunner(fullPath);
+    }
+
+    if (entry.isDirectory) {
+      await folderRunner(fullPath);
+    }
+
+    Deno.stdout.write(new TextEncoder().encode("\n"));
   }
 }
 
-const FILENAME = `${Date.now()}.json`;
-
-async function saveBenchmark() {
-  const outputFile = new URL(
-    `../static/runtime/${FILENAME}`,
-    import.meta.url,
-  );
-
-  await ensureDir(path.dirname(outputFile.pathname));
-  await Deno.writeTextFile(outputFile, JSON.stringify(fullBenchmark));
-}
-
-async function updateEntries() {
-  const entriesFile = new URL(
-    `../static/runtime/entries.json`,
-    import.meta.url,
-  );
-
-  const entries: string[] = await loadJsonFile(entriesFile, []);
-  entries.push(FILENAME);
-  await Deno.writeTextFile(entriesFile, JSON.stringify(entries));
-}
-
-const fullBenchmark: FullBenchmark = {
-  cpu: "",
-  arch: "",
-  versions: {
-    deno: "",
-    bun: "",
-    node: "",
-  },
-  entries: {},
-};
-
-for await (const entry of Deno.readDir(ENTRIES_URL)) {
-  if (
-    exclude.includes(entry.name) ||
-    exclude.includes(entry.name.replace(/\.js$/, ""))
-  ) {
-    continue;
-  }
-
-  if (
-    only.length > 0 &&
-    !(only.includes(entry.name) ||
-      only.includes(entry.name.replace(/\.js$/, "")))
-  ) {
-    continue;
-  }
-
-  const fullPath = new URL(entry.name, ENTRIES_URL.href).pathname;
-  Deno.stdout.write(new TextEncoder().encode(`${entry.name} `));
-
-  if (entry.isFile) {
-    await fileRunner(fullPath);
-  }
-
-  if (entry.isDirectory) {
-    await folderRunner(fullPath);
-  }
-
-  Deno.stdout.write(new TextEncoder().encode("\n"));
-}
-
-await saveBenchmark();
-await updateEntries();
+await ensureDirectory();
+await run();

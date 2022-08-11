@@ -1,4 +1,4 @@
-import { parse } from "flags";
+import { parse } from "deno:flags";
 
 const { port } = parse(Deno.args, {
   string: ["port"],
@@ -10,7 +10,7 @@ for await (const conn of Deno.listen({ port: Number(port) })) {
       const url = new URL(request.url);
 
       if (url.pathname === "/json") {
-        respondWith(Response(JSON.stringify({ message: "Hello, World!" })));
+        respondWith(new Response(JSON.stringify({ message: "Hello, World!" })));
       } else if (url.pathname === "/promise") {
         respondWith(Promise.resolve(new Response("As promised!")));
       } else {

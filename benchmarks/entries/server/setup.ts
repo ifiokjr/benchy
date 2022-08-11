@@ -1,6 +1,13 @@
 import { getFreePort } from "free_port";
 import { Report } from "mitata";
-import { AutoCannon, Command, RuntimeCommands } from "~/types.ts";
+import type {
+  AutoCannon,
+  Command,
+  Entry,
+  Runtime,
+  RuntimeCommands,
+} from "~/types.ts";
+import { mapAutoCannonToEntry } from "../../utils.js";
 
 export const commands: RuntimeCommands = {
   bun: createCommand("bun", [
@@ -17,10 +24,10 @@ export const commands: RuntimeCommands = {
   ]),
 };
 
-function createCommand(command: string, args: string[]): Command {
+function createCommand(command: Runtime, args: string[]): Command {
   return async () => {
     const port = await getFreePort(5125);
-    const report: Report = { benchmarks: [], cpu: "", runtime: "" };
+    const entries: Entry[] = [];
 
     // spawn the server
     const serverChild = Deno.spawnChild(command, {
@@ -36,62 +43,49 @@ function createCommand(command: string, args: string[]): Command {
       const outputString = new TextDecoder().decode(output.stdout);
       const json: AutoCannon = JSON.parse(outputString);
 
-      insertAsBenchmark(report, json, "server:text");
+      updateEntries(entries, json, command, "server:text");
     }
 
-    // {
-    //   const jsonChild = Deno.spawnChild("pnpm", {
-    //     args: ["autocannon", `http://localhost:${port}/json`, "--json"],
-    //   });
+    {
+      const jsonChild = Deno.spawnChild("pnpm", {
+        args: ["autocannon", `http://localhost:${port}/json`, "--json"],
+      });
 
-    //   const output = await jsonChild.output();
-    //   const outputString = new TextDecoder().decode(output.stdout);
-    //   const json: AutoCannon = JSON.parse(outputString);
+      const output = await jsonChild.output();
+      const outputString = new TextDecoder().decode(output.stdout);
+      const json: AutoCannon = JSON.parse(outputString);
 
-    //   insertAsBenchmark(report, json, "server:json");
-    // }
+      updateEntries(entries, json, command, "server:json");
+    }
 
-    // {
-    //   const promiseChild = Deno.spawnChild("pnpm", {
-    //     args: ["autocannon", `http://localhost:${port}/promise`, "--json"],
-    //   });
+    {
+      const promiseChild = Deno.spawnChild("pnpm", {
+        args: ["autocannon", `http://localhost:${port}/promise`, "--json"],
+      });
 
-    //   const output = await promiseChild.output();
-    //   const outputString = new TextDecoder().decode(output.stdout);
-    //   const json: AutoCannon = JSON.parse(outputString);
+      const output = await promiseChild.output();
+      const outputString = new TextDecoder().decode(output.stdout);
+      const json: AutoCannon = JSON.parse(outputString);
 
-    //   insertAsBenchmark(report, json, "server:promise");
-    // }
+      updateEntries(entries, json, command, "server:promise");
+    }
 
     try {
       serverChild.kill("SIGTERM");
     } catch {
+      console.error("this broke");
       // Sometimes this breaks;
     }
 
-    return JSON.stringify(report);
+    return entries;
   };
 }
 
-function insertAsBenchmark(report: Report, json: AutoCannon, name: string) {
-  report.benchmarks.push({
-    async: true,
-    baseline: false,
-    fn: () => {},
-    group: "server",
-    name,
-    time: json.duration * 1000,
-    warmup: true,
-    stats: {
-      avg: json.latency.average,
-      jit: [],
-      max: json.latency.max,
-      min: json.latency.min,
-      n: json.latency.totalCount,
-      p75: json.latency.p75,
-      p99: json.latency.p99,
-      p995: json.latency.p99_9,
-      p999: json.latency.p99_999,
-    },
-  });
+function updateEntries(
+  entries: Entry[],
+  json: AutoCannon,
+  runtime: Runtime,
+  name: string,
+) {
+  entries.push(...mapAutoCannonToEntry(json, runtime, name));
 }

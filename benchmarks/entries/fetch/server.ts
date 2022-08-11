@@ -1,4 +1,4 @@
-import { parse } from "flags";
+import { parse } from "deno:flags";
 import { serve } from "http/server";
 
 const { port } = parse(Deno.args, { string: ["port"] });

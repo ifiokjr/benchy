@@ -1,12 +1,27 @@
 import { bench, group, run } from "mitata";
+import { mapReportToEntry } from "./utils.js";
 
-export async function load(file, name, json = "{}") {
+class BenchyRunnerError extends Error {
+  name = "RunnerError";
+  constructor(message) {
+    super(message);
+  }
+}
+
+/**
+ * @param {typeof Deno.writeTextFile} save
+ * @param {import('~/types.ts').Runtime} runtime
+ * @param {string} file
+ * @param {string} name
+ * @param {string} json
+ */
+export async function load(save, runtime, file, name, json = "{}") {
   let imports;
 
   try {
     imports = await import(file);
   } catch (_error) {
-    return;
+    throw new BenchyRunnerError("Failed to import file.");
   }
 
   const { default: main, setup, teardown, ...rest } = imports;
@@ -25,6 +40,9 @@ export async function load(file, name, json = "{}") {
     });
   }
 
-  await run({ json: true });
+  const report = await run({ json: true });
+  const mappedReport = mapReportToEntry(report, runtime);
+  await save(mappedReport);
+
   await teardown?.();
 }
