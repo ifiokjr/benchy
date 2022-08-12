@@ -1,7 +1,7 @@
 /** @jsx h */
 import { Fragment, h } from "preact";
 
-import capitalize from "https://esm.sh/just-capitalize@3.1.0";
+import capitalize from "just-capitalize";
 import { useState } from "preact/hooks";
 import { VictoryAxis } from "victory-axis";
 import { VictoryBar } from "victory-bar";

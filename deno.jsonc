@@ -1,28 +1,58 @@
 {
   "tasks": {
+    "bench:all": "deno run -A --unstable benchmarks/bench.ts",
+    "bench:gather": "deno run -A --unstable benchmarks/gather.ts",
+    "deno_bindgen": "deno run -A https://deno.land/x/deno_bindgen@0.6.0/codegen.ts",
+    "fix:format": "dprint fmt",
+    "fix": "deno task fix:format",
     "init": "pnpm install && deno task rust",
-    "rust": "deno task rust:node && deno task rust:ffi && deno task rust:deno && deno task rust:wasm",
-    "rust:node": "pnpm napi build -p benchmark_rust --release --js false --no-dts-header --features node --cargo-cwd benchmarks/rust && mv benchmark_rust.node benchmarks",
-    "rust:ffi": "cargo build -p benchmark_rust --lib --release --features ffi",
+    "lint:format": "dprint check",
+    "lint:ts": "deno lint",
+    "lint": "deno task lint:ts && deno task lint:format",
+    "lock:update": "deno run --allow-run=deno --allow-read config/scripts/cache.ts",
+    "lock": "deno run --allow-run=deno --allow-env=CI --allow-read config/scripts/cache.ts --reload",
     "rust:deno": "deno task deno_bindgen -- --features deno",
-    "rust:wasm": "deno task rust:wasm:create && deno task rust:wasm:deno && deno task rust:wasm:node",
+    "rust:ffi": "cargo build -p benchmark_rust --lib --release --features ffi",
+    "rust:node": "pnpm napi build -p benchmark_rust --release --js false --no-dts-header --features node --cargo-cwd benchmarks/rust && mv benchmark_rust.node benchmarks",
     "rust:wasm:create": "cargo build -p benchmark_rust --lib --target wasm32-unknown-unknown --release --features wasm",
     "rust:wasm:deno": "wasm-bindgen --target deno --out-dir benchmarks/wasm ./target/wasm32-unknown-unknown/release/benchmark_rust.wasm",
-    "rust:wasm:node": "deno run -A ./config/node_wasm.ts",
-    "gather": "deno run -A --unstable benchmarks/gather.ts",
-    "bench": "deno run -A --unstable benchmarks/bench.ts",
-    "bench:quick": "deno run -A --unstable benchmarks/bench.ts --exclude files",
-    "bench:files": "deno run -A --unstable benchmarks/bench.ts --only files",
+    "rust:wasm:node": "deno run -A config/scripts/node_wasm.ts",
+    "rust:wasm": "deno task rust:wasm:create && deno task rust:wasm:deno && deno task rust:wasm:node",
+    "rust": "deno task rust:node && deno task rust:ffi && deno task rust:deno && deno task rust:wasm",
     "start": "deno run -A --watch=static/,routes/ dev.ts",
-    "deno_bindgen": "deno run -A https://deno.land/x/deno_bindgen@0.6.0/codegen.ts"
+    "typecheck": "deno --unstable check -A config/scripts/scripts/typecheck.ts",
+    "update:deps": "deno run --allow-net --allow-read --allow-write https://deno.land/x/udd@0.7.5/main.ts import_map.json \"*.ts\"",
+    "update:dprint": "dprint config update",
+    "update": "deno task update:dprint && deno task update:deps"
+  },
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true
   },
   "lint": {
     "files": {
       "exclude": [
         "**/fixtures",
+        "**/*-lock.json",
         "**/snapshots",
         "node_modules/**"
       ]
+    },
+    "rules": {
+      "tags": ["recommended"],
+      "include": [
+        "ban-untagged-todo",
+        "camelcase",
+        "default-param-last",
+        "eqeqeq",
+        "no-await-in-loop",
+        "no-eval",
+        "no-sparse-arrays",
+        "no-throw-literal",
+        // "prefer-ascii",
+        "single-var-declarator",
+        "triple-slash-reference"
+      ],
+      "exclude": ["ban-types"]
     }
   },
   "importMap": "./import_map.json"

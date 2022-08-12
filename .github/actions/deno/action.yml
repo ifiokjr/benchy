@@ -1,0 +1,32 @@
+name: 'deno installation'
+description: 'Setup deno'
+inputs:
+  version: # id of input
+    description: 'The deno version'
+    required: false
+    default: v1.x
+
+runs:
+  using: 'composite'
+  steps:
+    - name: setup deno
+      uses: denoland/setup-deno@v1.0.0
+      with:
+        node-version: ${{ inputs.version }}
+
+    - name: setup deno env
+      id: deno_cache
+      shell: bash
+      run: |
+        echo "DENO_DIR=$HOME/.deno_cache" >> $GITHUB_ENV
+
+    - name: setup deno caching
+      uses: actions/cache@v3
+      if: ${{ !env.ACT }}
+      with:
+        path: ${{ env.DENO_DIR }}
+        key: ${{ hashFiles('lock.json') }}-${{ inputs.version }}-${{ runner.os }}
+
+    - name: update the cache with the lock.json
+      run: deno task lock
+      shell: 'bash'

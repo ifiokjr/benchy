@@ -1,0 +1,89 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  bench:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        name:
+          [
+            class,
+            console,
+            control_flow,
+            fetch,
+            ffi,
+            files,
+            function,
+            json,
+            map,
+            server,
+            set,
+            wasm,
+          ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: 🏴‍☠️ Checkout
+        uses: actions/checkout@v3
+
+      - name: 🦀 Install rust
+        if: ${{ matrix.name == 'wasm' || matrix.name == 'ffi' }}
+        uses: ./.github/actions/rust
+
+      - name: 🟢 Node
+        uses: ./.github/actions/pnpm
+
+      - name: 🦕 Deno
+        uses: ./.github/actions/deno
+
+      - name: 🐰 Bun
+        uses: antongolub/action-setup-bun@v1
+
+      - name: 🦀 wasm
+        if: ${{ matrix.name == 'wasm' }}
+        run: deno task rust:wasm
+
+      - name: 🦀 ffi
+        if: ${{ matrix.name == 'ffi' }}
+        run: |
+          deno task rust:node
+          deno task rust:ffi
+          deno task rust:deno
+
+      - name: 🪑 Benchmark
+        run: deno task bench:all --only ${{ matrix.name }}
+
+      - name: ⬆️ Upload results
+        uses: actions/upload-artifact@v3
+        with:
+          name: results
+          path: tmp/**
+
+  gather:
+    runs-on: ubuntu-latest
+    needs: bench
+    steps:
+      - name: 🏴‍☠️ Checkout
+        uses: actions/checkout@v3
+
+      - name: ⬇️ Download results
+        uses: actions/download-artifact@v3
+        with:
+          name: results
+          path: tmp
+
+      - name: 💍 Check artifacts
+        run: ls -R
+
+      - name: 🦕 Deno
+        uses: ./.github/actions/deno
+
+      - name: 🪑 Gather benchmarks
+        run: deno task bench:gather
+
+      # - name: Create Pull Request
+      #   uses: peter-evans/create-pull-request@v4
